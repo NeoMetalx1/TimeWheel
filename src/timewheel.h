@@ -1,13 +1,4 @@
-#include <iostream>
-#include <cstdlib>
-#include <cstdint>
-#include <vector>
-#include <thread>
-#include <chrono>
-#include <functional>
-#include <list>
-
-using fn = std::function<void()>;
+#include "taskexecutor.h"
 
 struct Task {
     uint32_t rotations;
@@ -18,19 +9,29 @@ struct Task {
 
 class TimeWheel {
 private:
+    TaskExecutor _executor;
+
     uint32_t _wheelSize = 0;
     uint32_t _currentCell = 0;
 
     std::vector<std::list<Task>> wheel;
-    
 
     uint32_t calcRotations(uint32_t delay) const;
+    
+    void tick();
+
+    bool _running = false;
+
+    std::thread _worker;
+    std::mutex _mutex;
 public:
     explicit TimeWheel(uint32_t wheel_size);
+    ~TimeWheel();
 
-    void tick(); // temporary public for debugging
+    void start();
+    void stop();
 
     uint32_t get_wheel_size() const;
 
-    void addTask(const fn& function, uint32_t delay);
+    void addTask(uint32_t delay, const fn& function);
 };

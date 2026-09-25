@@ -3,10 +3,18 @@
 bool Task::isAvailable() const {
     return rotations == 0;
 }
+                                          //temporary
+TimeWheel::TimeWheel(uint32_t wheel_size) : _executor(4), _wheelSize(wheel_size), _currentCell(0), wheel(wheel_size) {}
 
-TimeWheel::TimeWheel(uint32_t wheel_size) : _wheelSize(wheel_size), _currentCell(0), wheel(wheel_size) {}
+TimeWheel::~TimeWheel() {
+    if (_worker.joinable() && _running) {
+        stop();
+    }
+}
 
 void TimeWheel::tick() {
+    std::lock_guard<std::mutex> lock(_mutex);
+
     _currentCell = (_currentCell + 1) % _wheelSize;
 
     auto& cell = wheel[_currentCell];
@@ -18,9 +26,29 @@ void TimeWheel::tick() {
             --task.rotations;
             ++taskIt;
         } else {
-            task.function();
+            _executor.putTask(std::move(task.function));
             taskIt = cell.erase(taskIt);
         }
+    }
+}
+
+void TimeWheel::start() {
+    _running = true;
+
+    _worker = std::thread([this] {
+        while(_running) {
+            std::this_thread::sleep_for(std::chrono::seconds(1)); // temporary
+            tick();
+        }
+    });
+}
+
+void TimeWheel::stop() {
+    if (!_running)
+        return;
+    
+    if (_running && _worker.joinable()) {
+        _worker.join();
     }
 }
 
@@ -34,7 +62,9 @@ uint32_t TimeWheel::get_wheel_size() const {
     return _wheelSize;
 }
 
-void TimeWheel::addTask(const fn& function, uint32_t delay) {
+void TimeWheel::addTask(uint32_t delay, const fn& function) {
+    std::lock_guard<std::mutex> lock(_mutex);
+
     Task newTask;
 
     newTask.rotations = calcRotations(delay);

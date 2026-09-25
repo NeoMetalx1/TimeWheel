@@ -19,13 +19,11 @@ void test3() {
 int main() {
     TimeWheel wheel(8);
 
-    wheel.addTask(test1, 3);
-    wheel.addTask(deleteExpired, 12);
-    wheel.addTask(test2, 13);
-    wheel.addTask(test3, 18);
+    wheel.start();
 
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        wheel.tick();
-    }
+    wheel.addTask(3, test1);
+    wheel.addTask(12,deleteExpired);
+    wheel.addTask(4, test2);
+    wheel.addTask(3, test3);
+
 }
